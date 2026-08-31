@@ -25,6 +25,8 @@ As each event appears, narrate:
 
 Open the created Drive document, Calendar event and Gmail draft in quick succession. Do not cut the execution.
 
+For this full Workspace proof, configure domain-wide delegation and set `DEMO_MODE=false` before recording. If recording in safe demo mode, state clearly that Gemini and Firestore are live while the reversible Workspace actions are simulated.
+
 ## 2:20–3:05 — Architecture and reliability
 
 Show the architecture diagram in the README.
