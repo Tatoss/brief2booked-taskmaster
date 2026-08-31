@@ -1,0 +1,14 @@
+.git
+.github
+.next
+.openai
+.wrangler
+dist
+node_modules
+__pycache__
+*.pyc
+*.log
+.env*
+docs
+examples
+tests
