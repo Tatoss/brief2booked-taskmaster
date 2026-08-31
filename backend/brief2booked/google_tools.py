@@ -29,9 +29,14 @@ def _workspace_service(api: str, version: str, scopes: list[str]):
 def record_action(run_id: str, action: str, payload: dict[str, Any]) -> dict:
     """Append an auditable, idempotent action to Firestore."""
     result = {"action": action, "payload": payload, "created_at": datetime.now(timezone.utc).isoformat()}
-    if not _demo():
+    try:
         db = firestore.Client()
         db.collection("workflow_runs").document(run_id).collection("actions").document(action).set(result)
+    except Exception:
+        # Local demo runs may not have Google credentials. Cloud Run demo runs do,
+        # so their audit trail is still persisted to the project's Firestore DB.
+        if not _demo():
+            raise
     return result
 
 
