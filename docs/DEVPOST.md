@@ -28,7 +28,7 @@ The ADK coordinator routes high-confidence opportunities through the full workfl
 - Pub/Sub for event delivery and retry
 - Firestore for idempotency, workflow state and audit events
 - Gmail, Google Calendar and Google Drive APIs for real actions
-- React/Vinext for the responsive operations dashboard
+- React/Next.js for the responsive Cloud Run operations dashboard
 
 The architecture separates event ingestion, reasoning, routing, tools and state. Strict Pydantic schemas reject malformed model output. Firestore event receipts prevent duplicate work. Tool calls use least-privilege scopes, and Gmail creates drafts rather than sending externally without review.
 
@@ -52,4 +52,4 @@ Agent quality depends as much on architecture as prompting. Structured outputs, 
 
 ## What's next
 
-Next I would add Gmail history synchronization, organisation-specific pricing memory, calendar free/busy optimisation, proposal templates by service, client approval links and outcome-based evaluation to improve qualification accuracy over time.
+Next I would add organisation-specific pricing memory, calendar free/busy optimisation, proposal templates by service, client approval links and outcome-based evaluation to improve qualification accuracy over time. The production connector already resolves Gmail Watch notifications through Gmail History and persists its renewal state in Firestore.
