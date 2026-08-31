@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? "https://brief2booked-147279859950.africa-south1.run.app"),
   title: "Brief2Booked — Autonomous Freelance Operations",
   description: "An event-driven Taskmaster agent that turns client enquiries into qualified, proposal-ready and scheduled opportunities.",
   openGraph: {
