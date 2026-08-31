@@ -2,8 +2,6 @@
 
 **An autonomous freelance-operations agent for the Taskmaster track.**
 
-[Open the live dashboard](https://brief2booked-taskmaster.texcorp.chatgpt.site)
-
 Brief2Booked watches for a new client enquiry and completes the operational work that normally steals focus from a solo developer: it understands an unstructured brief, qualifies the opportunity, routes uncertain cases, creates a tailored proposal, reserves a follow-up slot, creates delivery tasks, drafts the client reply, and records every decision.
 
 This is not a chatbot. The primary interface is an event-driven operations console; the agent runs asynchronously after a Gmail event and leaves completed work behind.
@@ -80,7 +78,7 @@ docs/
 Prerequisites: Node.js 22+.
 
 ```bash
-npm install
+npm run install:ci
 npm run dev
 ```
 
@@ -110,15 +108,17 @@ Keep `DEMO_MODE=true` until Google Workspace credentials and delegated scopes ar
 
 ## Deploy to Google Cloud
 
-1. Create a Firestore database in Native mode.
-2. Create an Artifact Registry Docker repository named `brief2booked`.
-3. Configure a Workspace service account with the minimum Gmail Compose, Calendar Events and Drive File scopes.
-4. Set `GOOGLE_CLOUD_PROJECT`.
-5. Run `bash backend/deploy.sh`.
-6. Create a Pub/Sub push subscription targeting `/events/gmail` with authenticated push.
-7. Configure Gmail Watch to publish to that topic.
+For project `brief2booked` (`147279859950`), open Google Cloud Shell from the project console and run:
 
-The deployed service is private by default. Grant only the Pub/Sub push service account `roles/run.invoker`.
+```bash
+git clone https://github.com/Tatoss/brief2booked-taskmaster.git
+cd brief2booked-taskmaster
+bash backend/deploy.sh
+```
+
+The script enables the required APIs, provisions Firestore in Johannesburg, creates the Pub/Sub topic and least-privilege agent service account, then deploys the Gemini 3.5 + ADK backend to Cloud Run.
+
+After the demo deployment, configure Google Workspace domain-wide delegation and a Gmail Watch publisher before changing `DEMO_MODE` to `false`.
 
 ## Reliability and safety
 
