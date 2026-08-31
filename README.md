@@ -2,6 +2,8 @@
 
 **An autonomous freelance-operations agent for the Taskmaster track.**
 
+[Open the live dashboard](https://brief2booked-taskmaster.texcorp.chatgpt.site)
+
 Brief2Booked watches for a new client enquiry and completes the operational work that normally steals focus from a solo developer: it understands an unstructured brief, qualifies the opportunity, routes uncertain cases, creates a tailored proposal, reserves a follow-up slot, creates delivery tasks, drafts the client reply, and records every decision.
 
 This is not a chatbot. The primary interface is an event-driven operations console; the agent runs asynchronously after a Gmail event and leaves completed work behind.
@@ -78,7 +80,7 @@ docs/
 Prerequisites: Node.js 22+.
 
 ```bash
-npm run install:ci
+npm install
 npm run dev
 ```
 
