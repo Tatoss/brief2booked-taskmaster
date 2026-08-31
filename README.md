@@ -2,7 +2,7 @@
 
 **An autonomous freelance-operations agent for the Taskmaster track.**
 
-[Open the live dashboard](https://brief2booked-taskmaster.texcorp.chatgpt.site)
+The production deployment uses an official Google Cloud Run `run.app` URL generated inside project `brief2booked`. The deployment command prints the exact URL when it finishes.
 
 Brief2Booked watches for a new client enquiry and completes the operational work that normally steals focus from a solo developer: it understands an unstructured brief, qualifies the opportunity, routes uncertain cases, creates a tailored proposal, reserves a follow-up slot, creates delivery tasks, drafts the client reply, and records every decision.
 
@@ -38,7 +38,7 @@ Brief2Booked turns that repeated, messy workflow into one observable and failure
 | Agent framework | Google Agent Development Kit (ADK) 2.0 |
 | Cloud infrastructure | Cloud Run, Pub/Sub and Firestore |
 | Google tools | Gmail API, Calendar API and Drive API |
-| Frontend | React / Next-compatible Vinext dashboard |
+| Frontend | React / Next.js dashboard served by Cloud Run |
 
 ## Architecture
 
@@ -118,9 +118,37 @@ cd brief2booked-taskmaster
 bash backend/deploy.sh
 ```
 
-The script enables the required APIs, provisions Firestore in Johannesburg, creates the Pub/Sub topic and least-privilege agent service account, then deploys the Gemini 3.5 + ADK backend to Cloud Run.
+The script enables the required APIs, provisions Firestore in Johannesburg, creates the Pub/Sub topic, authenticated push subscription and least-privilege service accounts, then deploys one production Cloud Run service containing both the dashboard and Gemini 3.5 + ADK agent.
+
+When deployment finishes, it prints URLs similar to:
+
+```text
+Dashboard: https://brief2booked-agent-....africa-south1.run.app
+Health:    https://brief2booked-agent-....africa-south1.run.app/health
+Demo:      https://brief2booked-agent-....africa-south1.run.app/v1/demo
+```
+
+The dashboard's **Run demo** button calls the real Cloud Run API, invokes Gemini through Vertex AI and writes the resulting action audit to Firestore.
 
 After the demo deployment, configure Google Workspace domain-wide delegation and a Gmail Watch publisher before changing `DEMO_MODE` to `false`.
+
+The delegated Workspace account needs these minimum OAuth scopes:
+
+- `https://www.googleapis.com/auth/gmail.readonly`
+- `https://www.googleapis.com/auth/gmail.compose`
+- `https://www.googleapis.com/auth/calendar.events`
+- `https://www.googleapis.com/auth/documents`
+- `https://www.googleapis.com/auth/drive.file`
+
+To switch from the safe judge demo to live Workspace actions, create a domain-wide delegated service-account credential and run:
+
+```bash
+export GOOGLE_WORKSPACE_USER="you@your-domain.com"
+export DRIVE_PROPOSALS_FOLDER_ID="optional-drive-folder-id"
+bash backend/configure_workspace.sh /secure/path/delegated-service-account.json
+```
+
+The credential is uploaded to Secret Manager rather than committed to Git. The script switches Cloud Run to `DEMO_MODE=false`, starts Gmail Watch through a Cloud Run Job and creates a daily Cloud Scheduler renewal.
 
 ## Reliability and safety
 
