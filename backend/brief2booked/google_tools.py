@@ -40,17 +40,67 @@ def record_action(run_id: str, action: str, payload: dict[str, Any]) -> dict:
     return result
 
 
+def record_workflow(
+    run_id: str,
+    status: str,
+    event: dict[str, Any],
+    decision: dict[str, Any],
+    actions: list[dict],
+) -> None:
+    """Persist the queryable workflow summary used by the production dashboard."""
+    document = {
+        "run_id": run_id,
+        "status": status,
+        "source": event.get("source"),
+        "company": event.get("company") or event.get("sender_name"),
+        "contact": event.get("sender_name"),
+        "sender_email": event.get("sender_email"),
+        "subject": event.get("subject"),
+        "service": decision.get("service"),
+        "estimated_value_zar": decision.get("estimated_value_zar"),
+        "fit_score": decision.get("fit_score"),
+        "confidence": decision.get("confidence"),
+        "action_count": len(actions),
+        "created_at": firestore.SERVER_TIMESTAMP,
+    }
+    try:
+        firestore.Client().collection("workflow_runs").document(run_id).set(document, merge=True)
+    except Exception:
+        if not _demo():
+            raise
+
+
 def create_proposal(run_id: str, client: str, proposal_markdown: str) -> dict:
     """Create a Google Doc proposal inside the configured Drive folder."""
     if _demo():
         return record_action(run_id, "proposal_created", {"title": f"Proposal — {client}", "document_id": "demo-proposal-001"})
-    drive = _workspace_service("drive", "v3", ["https://www.googleapis.com/auth/drive.file"])
-    metadata = {"name": f"Proposal — {client}", "mimeType": "application/vnd.google-apps.document"}
+    scopes = [
+        "https://www.googleapis.com/auth/documents",
+        "https://www.googleapis.com/auth/drive.file",
+    ]
+    docs = _workspace_service("docs", "v1", scopes)
+    drive = _workspace_service("drive", "v3", scopes)
+    document = docs.documents().create(body={"title": f"Proposal — {client}"}).execute()
+    document_id = document["documentId"]
+    docs.documents().batchUpdate(
+        documentId=document_id,
+        body={"requests": [{"insertText": {"location": {"index": 1}, "text": proposal_markdown}}]},
+    ).execute()
     folder = os.getenv("DRIVE_PROPOSALS_FOLDER_ID")
     if folder:
-        metadata["parents"] = [folder]
-    document = drive.files().create(body=metadata, fields="id,webViewLink").execute()
-    return record_action(run_id, "proposal_created", {"document_id": document["id"], "url": document.get("webViewLink"), "content": proposal_markdown})
+        current = drive.files().get(fileId=document_id, fields="parents").execute()
+        drive.files().update(
+            fileId=document_id,
+            addParents=folder,
+            removeParents=",".join(current.get("parents", [])),
+            fields="id,parents",
+        ).execute()
+    file_data = drive.files().get(fileId=document_id, fields="id,webViewLink").execute()
+    return record_action(
+        run_id,
+        "proposal_created",
+        {"document_id": document_id, "url": file_data.get("webViewLink")},
+    )
 
 
 def reserve_follow_up(run_id: str, client: str, attendee: str) -> dict:
