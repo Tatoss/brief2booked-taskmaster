@@ -7,7 +7,13 @@ from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
 from google.genai import types
 
-from .google_tools import create_delivery_tasks, create_proposal, draft_client_reply, reserve_follow_up
+from .google_tools import (
+    create_delivery_tasks,
+    create_proposal,
+    draft_client_reply,
+    record_workflow,
+    reserve_follow_up,
+)
 from .models import EnquiryEvent, WorkflowDecision, WorkflowResult
 
 MODEL = os.getenv("GEMINI_MODEL", "gemini-3.5-flash")
@@ -17,6 +23,8 @@ coordinator = Agent(
     name="freelance_ops_coordinator",
     model=MODEL,
     description="Autonomous coordinator that converts inbound freelance enquiries into completed operational workflows.",
+    input_schema=EnquiryEvent,
+    output_schema=WorkflowDecision,
     instruction="""You are Brief2Booked, an event-driven operations coordinator for a South African software studio.
 Read the enquiry and return ONLY valid JSON matching these keys:
 service, summary, estimated_value_zar, delivery_weeks, fit_score, confidence, risks, next_action, rationale.
@@ -39,6 +47,10 @@ async def _decide(event: EnquiryEvent, run_id: str) -> WorkflowDecision:
         if item.content and item.content.parts:
             chunks.extend(part.text for part in item.content.parts if getattr(part, "text", None))
     raw = "".join(chunks).strip().removeprefix("```json").removesuffix("```").strip()
+    if not raw.startswith("{"):
+        start, end = raw.find("{"), raw.rfind("}")
+        if start >= 0 and end > start:
+            raw = raw[start : end + 1]
     return WorkflowDecision.model_validate_json(raw)
 
 
@@ -48,7 +60,15 @@ async def process_enquiry(event: EnquiryEvent) -> WorkflowResult:
     actions: list[dict] = []
     if decision.next_action != "qualify" or decision.confidence < 0.75:
         actions.append(draft_client_reply(run_id, event.sender_email, f"Re: {event.subject}", "Thanks for your enquiry. I need a few details before I can prepare the right next step."))
-        return WorkflowResult(run_id=run_id, status="needs_review", decision=decision, actions=actions)
+        result = WorkflowResult(run_id=run_id, status="needs_review", decision=decision, actions=actions)
+        record_workflow(
+            run_id,
+            result.status,
+            event.model_dump(mode="json"),
+            decision.model_dump(mode="json"),
+            actions,
+        )
+        return result
 
     proposal = f"""# Proposal for {event.company or event.sender_name}
 
@@ -65,4 +85,12 @@ R{decision.estimated_value_zar:,}, subject to discovery and final scope.
     actions.append(reserve_follow_up(run_id, event.company or event.sender_name, event.sender_email))
     actions.append(create_delivery_tasks(run_id, event.company or event.sender_name, decision.service))
     actions.append(draft_client_reply(run_id, event.sender_email, f"Re: {event.subject}", "Thank you for the clear brief. I have prepared a proposal and reserved a discovery slot for review."))
-    return WorkflowResult(run_id=run_id, status="completed", decision=decision, actions=actions)
+    result = WorkflowResult(run_id=run_id, status="completed", decision=decision, actions=actions)
+    record_workflow(
+        run_id,
+        result.status,
+        event.model_dump(mode="json"),
+        decision.model_dump(mode="json"),
+        actions,
+    )
+    return result
